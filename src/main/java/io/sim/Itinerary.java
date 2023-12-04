@@ -1,6 +1,7 @@
 package io.sim;
 
 import java.io.IOException;
+import java.util.ArrayList;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -18,6 +19,7 @@ public class Itinerary {
 	private String uriItineraryXML;
 	private String[] itinerary;
 	private String idItinerary;
+	private ArrayList<Route> routes;
 
 	public Itinerary(String _uriRoutesXML, String _idRoute) {
 		this.uriItineraryXML = _uriRoutesXML;
@@ -70,5 +72,9 @@ public class Itinerary {
 
 	public boolean isOn() {
 		return this.on;
+	}
+
+	public ArrayList<Route> getRoutes() {
+		return this.routes;
 	}
 }

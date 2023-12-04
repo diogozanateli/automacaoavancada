@@ -10,15 +10,14 @@ public class FuelStation extends Thread {
     private Driver driver;
     private DrivingData drivingData;
     private ReentrantLock lock;
-    private int availablePumps;
+    private int availablePumps = 4;
     private boolean stocked = false;
     private Queue<Car> carQueue = new LinkedList<>();
 
-    // Construtor da classe FuelStation
-    public FuelStation(AlphaBank alphaBank, int pumpCount) {
+    public FuelStation(AlphaBank alphaBank) {
         this.alphaBank = alphaBank;
+        this.account = new Account("FuelStation", "12345", "12345");
         this.lock = new ReentrantLock();
-        this.availablePumps = pumpCount;
     }
 
     public void refuelCar(Car car) { // Abastecer o carro
@@ -29,12 +28,12 @@ public class FuelStation extends Thread {
                 availablePumps--;
 
                 // Simule o processo de abastecimento, levando 2 minutos
-                car.setVelocity(0); // Car parado
+                car.setVelocity(0); // Carro parado
                 Thread.sleep(2 * 60 * 1000); // 2 minutos
 
                 // Realize o pagamento ao Fuel Station
-                double paymentAmount = car.getFuelTank() * drivingData.getFuelPrice();
-                alphaBank.transfer(driver.getAccount()[0], this.getAccount()[0], paymentAmount);
+                double paymentAmount = drivingData.getFuelConsumption() * drivingData.getFuelPrice();
+                alphaBank.transfer(driver.getAccount(), account, paymentAmount);
 
                 // Abastece o carro
                 car.run();
@@ -80,9 +79,8 @@ public class FuelStation extends Thread {
         }
     }
 
-    // Método para retornar o login e a senha da conta
-    public String[] getAccount(){
-        return account.getAccountInfo();
+    public Account getAccount() {
+        return account;
     }
 
     @Override

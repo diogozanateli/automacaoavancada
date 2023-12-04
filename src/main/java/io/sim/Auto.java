@@ -181,6 +181,22 @@ public class Auto extends Thread {
 		return this.on_off;
 	}
 
+	public String getIdSumoVehicle() {
+		return this.idAuto;
+	}
+
+	public String getDriverID() {
+		return this.driverID;
+	}
+
+	public Car getCar() {
+		return this.car;
+	}
+
+	public String getRouteID() throws Exception {
+		return (String) this.sumo.do_job_get(Vehicle.getRouteID(this.idAuto));
+	}
+
 	public void setOn_off(boolean _on_off) {
 		this.on_off = _on_off;
 	}

@@ -13,6 +13,10 @@ public class EnvSimulator extends Thread{
     private SumoTraciConnection sumo;
 	private ArrayList<Itinerary> itineraries = new ArrayList<>();
 	private boolean allItinerariesLoaded = true;
+	private DrivingData drivingData;
+	private AlphaBank bank;
+	private Company company;
+	private FuelStation fuelStation;
 
     public EnvSimulator(){
 
@@ -32,72 +36,49 @@ public class EnvSimulator extends Thread{
 		try {
 			sumo.runServer(12345);
 
-			for (Itinerary itinerary : itineraries) {
-				if (!itinerary.isOn()) {
-					allItinerariesLoaded = false;
-					break;
+			new Thread(new Runnable(){
+				@Override
+				public void run() {
+					try {
+						while (!sumo.isClosed()) {
+							sumo.do_timestep();
+							Thread.sleep(500);////////////////////////////////////////velocidade 			
+						}
+	
+					} catch (Exception e) {
+						e.printStackTrace();
+					}
 				}
-			}
-
-			if (allItinerariesLoaded) {
-
-				for (int carIndex = 0; carIndex < 100; carIndex++) {
-					int fuelType = 2;
-					int fuelPreferential = 2;
-					double fuelPrice = 3.40;
-					int personCapacity = 1;
-					int personNumber = 1;
-					SumoColor green = new SumoColor(0, 255, 0, 126);
+			}).start();
 				
-					// Escolha o itinerário com base no índice
-					String itineraryParameter = String.valueOf(carIndex);
-				
-					// Crie uma conta bancária para o driver
-					String driverLogin = "driver" + carIndex; // Login com base no índice
-					String driverSenha = "senha" + carIndex; // Senha com base no índice
-					AlphaBank driverAccount = new AlphaBank(driverLogin, driverSenha);
+				Itinerary i1 = new Itinerary("data/dados.xml",drivingData.getRouteIDSUMO());
+
+				if (i1.isOn()) {
+					for (int i = 1; i <= 1 ; i++) {
+						Driver drivers = new Driver ("Driver "+i, "CAR "+i, fuelStation, sumo, bank);
+						Car car = new Car("CAR "+i, "Driver "+i, sumo);
+						bank.addAccount(drivers.getAccount());
+						company.addDriver(drivers);
+						company.addCar(car);
+						drivers.run();
+					}
 					
-					Driver driver = new Driver(driverAccount);
-					Car car = new Car(driverAccount, new ArrayList<Route>(), driver);
-
-					// Crie o driver com o itinerário e a conta bancária
-					Itinerary randomItinerary = new Itinerary("data/dados2.xml", itineraryParameter);
-					
-				
-					// Associe a rota ao driver e ao carro
-					String[] points = randomItinerary.getItinerary();
-					Route route = new Route(points);
-					driver.addRouteToExecute(route);
-					car.setRoutes(route);
-					route.addCar(car);
-				
-					// Crie o objeto Auto
-					Auto auto = new Auto(true, "Car" + carIndex, green, "D" + carIndex, sumo, 500, fuelType, fuelPreferential, fuelPrice, personCapacity, personNumber, car);
-				
-					// Crie o objeto TransportService associado ao carro e itinerário
-					TransportService transportService = new TransportService(true, "TransportService" + carIndex, randomItinerary, auto, sumo);
-		
-					// Inicie o driver, o carro, o Auto e o TransportService
-					driver.run();
-					car.run();
-					auto.start();
-					transportService.start();
-				
-					Thread.sleep(5000); // Aguarde 5 segundos antes de criar o próximo carro
 				}
-				
-				
-			}
 
-		
-		} catch (IOException e1) {
+				bank = new AlphaBank(drivingData);
+				company = new Company(company.getDrivers(), company.getCars(), i1.getRoutes(), sumo, bank);
+				fuelStation = new FuelStation(bank);
+				bank.addAccount(fuelStation.getAccount());
+				bank.addAccount(company.getAccount());
+				fuelStation.run();
+				company.run();
+				bank.run();
+	
+			}
+		 catch (IOException e1) {
 			e1.printStackTrace();
-		} catch (InterruptedException e) {
-			e.printStackTrace();
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
-
-    }
-
+	}
 }

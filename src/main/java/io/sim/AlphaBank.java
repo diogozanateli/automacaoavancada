@@ -1,82 +1,45 @@
 package io.sim;
 
 import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.locks.ReentrantLock;
+import org.json.JSONObject;
 
-public class AlphaBank {
-    private ReentrantLock lock;
-    private Account account;
-    private List<Account> accounts;
+import java.io.IOException;
+import java.net.ServerSocket;
+import java.net.Socket;
+
+public class AlphaBank extends Thread{
+    private ArrayList<Account> accounts;
+    private Account accountCompany;
+    private Account accountDriver;
+    private Account accountFuelStation;
+    private DrivingData drivingData;
 
     // Construtor da classe AlphaBank
-    public AlphaBank(String login, String password) {
-        Account account = new Account(login, password);
-        lock = new ReentrantLock();
-        accounts = new ArrayList<>();
-        addAccount(account);
+    // Construtor da classe AlphaBank
+    public AlphaBank(DrivingData drivingData) {
+        this.accounts = new ArrayList<>();
+        this.drivingData = drivingData; // Atribua a instância de DrivingData
     }
 
-    //Método para realizar depósito na conta
-    public void deposit(String login, double value) {
-        lock.lock();
-        if (account.getAccountInfo()[0].equals(login)) {
-            try {
-                account.recordTransation("Depósito", login, value);
-            } finally {
-                lock.unlock();
-            }
-        }
-    }
-
-    //Método para realizar saque na conta
-    public void withdraw(String login, String password, double value) {
-        if (account.getAccountInfo()[0].equals(login) || account.getAccountInfo()[1].equals(password)) {
-            lock.lock();
-            try {
-                account.recordTransation("Saque", login, -value);
-            } finally {
-                lock.unlock();
-            }
-    }
-}
-
-    //Método para realizar transferência entre contas
-    public void transfer(String origem, String destino, double valor) {
-        lock.lock();
-        try {
-            if (origem == null || destino == null || valor <= 0) {
-                throw new IllegalArgumentException("Erro: Parâmetros inválidos.");
-            }
-            if (account.getAccountInfo()[0].equals(origem)) {
-                account.recordTransation("Transferência", origem, -valor);
-                account.recordTransation("Transferência", destino, valor);
-            }
-     } finally {
-            lock.unlock();
-        }
-}
-
-//Método para retornar o saldo da conta
-public double getBalance(String login, String password) {
-    if (account.getAccountInfo()[0].equals(login) || account.getAccountInfo()[1].equals(password)) {
-        return account.getBalance();
-    }
-    return 0.0;
-}
-
-//Método para verificar se a conta existe
-public boolean hasAccount(String string) {
-    if (account.getAccountInfo()[0].equals(string)) {
-        return true;
-    }
-    return false;
+//Método para retornar o login e a senha da conta
+public Account getAccountFuelStation() {
+    return accountFuelStation;
 }
 
 //Método para retornar o login e a senha da conta
-public String[] getAccountInfo() {
-    return account.getAccountInfo();
-    
+public Account getAccountCompany() {
+    return accountCompany;
+}
+
+//Método para retornar o login e a senha da conta
+public Account getAccountDriver() {
+    return accountDriver;
+}
+
+//Método para retornar a lista de contas
+public ArrayList<Account> getAccounts() {
+    return accounts;
 }
 
 //Método para adicionar uma conta na lista de contas
@@ -85,10 +48,52 @@ public void addAccount(Account account) {
 }
 
 //Método para remover uma conta da lista de contas
-public void removeAccount(String login, String password) {
-    if (account.getAccountInfo()[0].equals(login) || account.getAccountInfo()[1].equals(password)) {
-        accounts.remove(account);
+public void removeAccount(Account account) {
+   accounts.remove(account);
+}
+
+public void transfer(Account account, Account account2, double paymentAmount) {
+    ReentrantLock lock = new ReentrantLock();
+    lock.lock();
+    try {
+        if (account.getBalance() >= paymentAmount) {
+            account.withdraw(paymentAmount);
+            account2.deposit(paymentAmount);
+        }
+    } finally {
+        lock.unlock();
     }
 }
 
+public void processPaymentRequests(Socket clientSocket) {
+        JSONObject json = new JSONObject(clientSocket.getInetAddress());
+        String type = json.getString("type");
+
+        if (type.equalsIgnoreCase("PaymentDriver")) {
+            BotPayment botPayment = new BotPayment(accountCompany, accountDriver, "Driver", drivingData);
+            botPayment.paymentDriver();
+        } else if (type.equalsIgnoreCase("PaymentFuelStation")) {
+            BotPayment botPayment = new BotPayment(accountDriver, accountFuelStation, "FuelStation", drivingData);
+            botPayment.paymentFuelStation();
+        }
+    }
+
+    @Override
+    public void run() {
+        try {
+            int porta = 12345;
+            try (ServerSocket servidorSocket = new ServerSocket(porta)) {
+                while (true) {
+                    Socket clientSocket = servidorSocket.accept();
+                    System.out.println("Conexão estabelecida com " + clientSocket.getInetAddress());
+                    processPaymentRequests(clientSocket);
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 }
+
+
+

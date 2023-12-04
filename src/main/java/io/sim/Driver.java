@@ -1,79 +1,151 @@
 package io.sim;
 
 import java.util.ArrayList;
-import java.util.List;
+import org.json.JSONObject;
 
+import it.polito.appeal.traci.SumoTraciConnection;
+
+import java.io.IOException;
+import java.net.ServerSocket;
+import java.net.Socket;
 
 public class Driver extends Thread {
-    private AlphaBank alphaBank;
+    private Auto auto;
+    private Car car;
+    private Client client;
+    private Itinerary itinerary;
     private Account account;
     private DrivingData drivingData;
-    private List<BotPayment> botPayments;
-    private List<Route> routesToExecute;
+    private ArrayList<Route> routesToExecute;
     private Route currentRoute;
-    private List<Route> completedRoutes;
+    private ArrayList<Route> completedRoutes;
+    private String idDriver;
+    private String idCar;
+    private AlphaBank alphaBank;
     
     //Construtor da classe Driver
-    public Driver(AlphaBank alphaBank) {
+    public Driver(String idDriver, String idCar,FuelStation fuelStation, SumoTraciConnection sumo, AlphaBank alphaBank){
+        this.idDriver = idDriver;
+        this.idCar = idCar;
         this.alphaBank = alphaBank;
-        this.botPayments = new ArrayList<>();
-        this.routesToExecute = new ArrayList<>();
-        this.completedRoutes = new ArrayList<>();
+        this.account = new Account(idDriver, "12345", "12345");
+        Car car = new Car(idCar, idDriver, sumo);
+        Thread t = new Thread(car);
+        Itinerary itinerary = new Itinerary("data/dados2.xml", drivingData.getRouteIDSUMO());
+        TransportService tS = new TransportService(true, idCar, itinerary, car.getAutoData(), sumo);
+		tS.start();
+		t.start();
     }
 
     //Método para obter o ID do driver
     public String getID() {
-        return drivingData.getDriverID();
+        return this.idDriver;
     }
 
-    public String[] getAccount(){
-        return account.getAccountInfo();
+    public String getIDCar() {
+        return this.idCar;
     }
 
-    //Método para adicionar uma rota a ser executada
+    //Método para obter a conta do driver
+    public Account getAccount() {
+        return this.account;
+    }
+
+    //Método para obter o itinerário do driver
+    public Itinerary getItinerary() {
+        return this.itinerary;
+    }
+
+    //Método para obter o carro do driver
+    public Auto getAuto() {
+        return this.auto;
+    }
+
+    //Método para obter os dados de direção do driver
+    public DrivingData getDrivingData() {
+        return this.drivingData;
+    }
+
+    //Método para obter a lista de rotas completadas
+    public ArrayList<Route> getCompletedRoutes() {
+        return this.completedRoutes;
+    }
+
+    //Método para obter a lista de rotas a serem executadas
+    public ArrayList<Route> getRoutesToExecute() {
+        return this.routesToExecute;
+    }
+
+    //Método para obter a rota atual
+    public Route getCurrentRoute() {
+        return this.currentRoute;
+    }
+
+    //Método para remover uma rota da lista de rotas a serem executadas
+    public void removeRouteToExecute(Route route) {
+        this.routesToExecute.remove(route);
+    }
+
+    //Método para adicionar uma rota a lista de rotas a serem executadas
     public void addRouteToExecute(Route route) {
-        routesToExecute.add(route);
+        this.routesToExecute.add(route);
     }
 
-    //Método para selecionar rota a ser executada
-    private synchronized Route selectRouteToExecute() {
-        if (routesToExecute.isEmpty()) {
-            return null;
+    //Método para adicionar uma rota a lista de rotas completadas
+    public void addCompletedRoute(Route route) {
+        this.completedRoutes.add(route);
+    }
+
+    public void startedRoute(Route route) throws IOException {
+        this.currentRoute = route;
+        JSONObject json = new JSONObject();
+        json.put("type", "Route Started!");
+        json.put("data", route);
+        client.enviarMensagem(json.toString());
+    }
+
+    public void finishedRoute(Route route) throws IOException {
+        this.currentRoute = null;
+        JSONObject json = new JSONObject();
+        json.put("type", "Route Finished!");
+        json.put("data", route);
+        client.enviarMensagem(json.toString());
+    }
+
+    //Método para pagar a FuelStation
+    public void payFuelStation() {
+        try {
+            alphaBank.transfer(account, alphaBank.getAccountFuelStation(), car.getRefuelAmount() * drivingData.getFuelPrice());
+        } catch (Exception e) {
+            e.printStackTrace();
         }
-        Route route = routesToExecute.remove(0);
-        currentRoute = route;
-        return route;
-    }
-
-    //Método para adicionar uma rota completada
-    private synchronized void routeCompleted(Route route) {
-        currentRoute = null;
-        completedRoutes.add(route);
-    }
-
-     //Método para obter o saldo do driver
-     public synchronized double getAccountBalance(String login, String senha) {
-        return alphaBank.getBalance(login, senha);
     }
 
     @Override
     //Método para executar o driver
     public void run() {
-    
-    //Para cada rota a ser executada, cria um bot de pagamento e adiciona a lista de bots de pagamento    
-    for (Route route : routesToExecute) {
-        BotPayment botPayment = new BotPayment(route);
-        botPayments.add(botPayment);
-        botPayment.run(); // Inicia o bot de pagamento
-    }
+        try {
+            int porta = 12345; 
+            try (ServerSocket servidorSocket = new ServerSocket(porta)) {
+                System.out.println("Aguardando conexões na porta " + porta + "...");
 
-    //Enquanto houver rotas a serem executadas, seleciona uma rota para executar e marca a rota como completada caso não seja nula
-    while (!routesToExecute.isEmpty()) { 
-        Route route = selectRouteToExecute(); 
-        if (route != null) { 
-            routeCompleted(route);
+                while (true) {
+                    // Aguarda por uma conexão de cliente
+                    Socket clientSocket = servidorSocket.accept();
+                    System.out.println("Conexão estabelecida com " + clientSocket.getInetAddress());
+
+                    // Cria um objeto Client para lidar com a conexão
+                    client = new Client();
+                    client.conectar();
+                    // Cria uma nova thread para lidar com a conexão
+                    Thread t = new Thread((Runnable) client);
+                    t.start();
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
         }
     }
-    }
+
     
 }

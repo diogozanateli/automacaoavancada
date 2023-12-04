@@ -1,49 +1,37 @@
 package io.sim;
 
-import java.util.ArrayList;
+import java.io.IOException;
+import de.tudresden.sumo.cmd.Vehicle;
+import org.json.JSONObject;
+
+import it.polito.appeal.traci.SumoTraciConnection;
 
 
-public class Car extends Thread {
+public class Car extends Vehicle implements Runnable {
     private static final double INITIAL_FUEL = 40.0; // Litros
     private static final double FUEL_CONSUMPTION_KM = 0.4; // Consumo por km
     private static final double REFUEL_AMOUNT = 20.0; // Litros a serem abastecidos
     private static final double MINIMUM_FUEL_FOR_REFUEL = 10.0; // Litros
     private static final int REFUEL_TIME_MINUTES = 2;
-    private double kmRodados;
-    private double xPosition;
-    private double yPosition;
-    private double lastXPosition;
-    private double lastYPosition;
 
-    private int velocity;
-    private AlphaBank alphaBank;
+    private double velocity;
+    private Auto auto;
     private Account account;
     private FuelStation fuelStation;
     private DrivingData drivingData;
-    private double fuelTank;
-    private double distanceTraveled;
     private boolean needsRefuel;
-    private ArrayList<Route> routes;
     private Driver driver;
+    private Company company;
+    private String idCar;
+    private String idDriver;
+    private double fuelTank;
 
     // Construtor da classe Car
-    public Car(AlphaBank alphaBank, ArrayList<Route> routes, Driver driver) {
-        this.alphaBank = alphaBank;
+    public Car(String idCar, String idDriver, SumoTraciConnection sumo) {
+        this.idCar = idCar;
+        this.idDriver = idDriver;
         this.fuelTank = INITIAL_FUEL;
-        this.distanceTraveled = 0.0;
         this.needsRefuel = false;
-        this.routes = routes;
-        this.driver = driver;
-    }
-
-    // Método para retornar a distância percorrida
-    public synchronized double getDistanceTraveled() {
-        return distanceTraveled;
-    }
-
-    // Método para retornar o combustível restante
-    public synchronized double getFuelTank() {
-        return fuelTank;
     }
 
     //Método para incrementar o combustível quando o carro for abastecido
@@ -52,23 +40,23 @@ public class Car extends Thread {
     }
 
     // Método para retornar o Driver
-    public Driver getDriver() {
-        return driver;
+    public String getidDriver() {
+        return idDriver;
     }
 
-    // Método para retornar o número de km rodados
-    public int getKmRodados() {
-            return (int) kmRodados; 
+    // Método para retornar o ID do carro
+    public String getidCar() {
+        return idCar;
+    }
+
+    // Método para retornar o combustível restante
+    public double getFuelTank() {
+        return fuelTank;
     }
 
     // Método para retornar a quantidade de combustível inicial
     public double getInitialFuel() {
         return INITIAL_FUEL;
-    }
-
-    // Método para retornar o consumo de combustível por km
-    public double getFuelConsumptionPerKilometer() {
-        return FUEL_CONSUMPTION_KM;
     }
 
     // Método para retornar a quantidade de combustível a ser abastecida
@@ -85,10 +73,27 @@ public class Car extends Thread {
     public int getRefuelTimeMinutes() {
         return REFUEL_TIME_MINUTES;
     }
-    
-    // Método para adicionar as rotas na lista de rotas
-    public void setRoutes(Route route) {
-        routes.add(route);
+
+    public double decrementFuel(){
+        return fuelTank - drivingData.getFuelConsumption();
+    }
+
+    //Método JSON to string com os dados dessa classe
+    public String toJSONString() throws IOException {
+        Client client = new Client();
+        client.conectar();
+        JSONObject jsonObject = new JSONObject();
+        jsonObject.put("time_stamp", System.currentTimeMillis());
+        jsonObject.put("idCar", idCar);
+        jsonObject.put("idDriver", idDriver);
+        jsonObject.put("speed", drivingData.getSpeed());
+        jsonObject.put("distance", drivingData.getDistanceKm(drivingData.getX_Position(), drivingData.getY_Position()));
+        jsonObject.put("fuel_consumption", drivingData.getFuelConsumption());
+        jsonObject.put("fuel_type", drivingData.getFuelType());
+        jsonObject.put("co2_emission", drivingData.getCo2Emission());
+        jsonObject.put("longitude", drivingData.getX_Position());
+        jsonObject.put("latitude", drivingData.getY_Position());
+        return jsonObject.toString();
     }
 
     // Método para abastecer o carro
@@ -99,7 +104,7 @@ public class Car extends Thread {
             e.printStackTrace();
         }
 
-        double driverBalance = alphaBank.getBalance(driver.getAccount()[0], driver.getAccount()[1]);
+        double driverBalance = account.getBalance();
 
         if (driverBalance >= REFUEL_AMOUNT * drivingData.getFuelPrice()) { // Se o saldo do motorista for suficiente para abastecer
             fuelStation.refuelCar(this);
@@ -109,7 +114,7 @@ public class Car extends Thread {
     }
 
     // Método para definir a velocidade do carro
-    public void setVelocity(int velocity) {
+    public void setVelocity(double velocity) {
         if (velocity >= 0) {
             this.velocity = velocity; // Defina a velocidade do carro
         } else {
@@ -117,29 +122,14 @@ public class Car extends Thread {
         }
     }
 
-    //Método para calcular a distância entre dois pontos
-    private double calculateDistance(double latInicial, double lonInicial, double LatFinal, double LonFinal) {
-            return Math.sqrt(Math.pow(LatFinal - latInicial, 2) + Math.pow(LonFinal - lonInicial, 2));
-    }
-    
-    // Método para atualizar a distância percorrida
-    public void updateDistanceTraveled() {
-        
-           if(drivingData.getSpeed() == 0) {
-                xPosition = drivingData.getX_Position();
-                yPosition = drivingData.getY_Position();
-            }
-            else{
-                lastXPosition = xPosition;
-                lastYPosition = yPosition;
-            }
+    public Auto getAutoData() {
+		return auto;
+	}
 
-            double distanceTraveled = calculateDistance(xPosition, yPosition, lastXPosition, lastYPosition);
-    
-            kmRodados += distanceTraveled;
-    
+    public Driver getDriverData() {
+        return driver;
     }
-   
+
       @Override
     public void run() {
         while (true) {
@@ -157,16 +147,17 @@ public class Car extends Thread {
             double fuelConsumption = FUEL_CONSUMPTION_KM * velocity;
             setFuelTank(fuelTank - fuelConsumption);
 
-            // Atualiza a distância percorrida
-            distanceTraveled += fuelConsumption;
-
-            // Atualiza a posição do carro
-            updateDistanceTraveled();
-
-            // Atualiza a velocidade do carro
-            setVelocity(velocity);
+            //Envia dados para a company para inserir no banco SQL
+            try {
+                company.insertData(toJSONString());
+            } catch (IOException e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
 
         }
     }
+
+
 }
 

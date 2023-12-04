@@ -5,7 +5,7 @@ import java.util.Date;
 import java.util.List;
 
 
-public class Account {
+public class Account extends Thread {
     
     private String login;
     private String password;
@@ -14,16 +14,39 @@ public class Account {
     private List<Transacao> extract;
 
 
-  public Account(String login, String password) {
+  public Account(String login, String password, String client) {
     this.login = login;
     this.password = password;
-    this.balance = 0.0;
     this.lock = new ReentrantLock();
     this.extract = new ArrayList<>();
-}
+    this.balance = 0;
+
+    if (this.login.equals("Driver") && this.password.equals(password)) {
+        this.balance = 5000;
+    } else if (this.login.equals("Company") && this.password.equals(password)) {
+        this.balance = 500000; 
+    } else if (this.login.equals("FuelStation") && this.password.equals(password)) {
+        this.balance = 50000;
+    }
+    
+    }
+
+    public String getLogin() {
+        return this.login;
+    }
+
+    public void withdraw(double paymentAmount) {
+        if (this.balance >= paymentAmount) {
+            this.balance -= paymentAmount;
+        }
+    }
+
+    public void deposit(double paymentAmount) {
+        this.balance += paymentAmount;
+    }
 
     //Método para gerar o extrato da conta
-    public List<Transacao> getExtract() {
+    public List<Transacao> getExtract() {   
         return extract;
     }
 
@@ -42,18 +65,18 @@ public class Account {
         }
     }
 
-    //Método para retornar o login e a senha da conta
-    public String[] getAccountInfo() {
-        String[] accountInfo = new String[2];
-        accountInfo[0] = login;
-        accountInfo[1] = password;
-        return accountInfo;
-    }
-
     //Método para retornar o saldo da conta
     public double getBalance() {
         return balance;
     }
+
+    //Método para alterar o saldo da conta
+    public void setBalance(double saldo) {
+        this.balance = saldo;
+    }
+
+    @Override
+    public void run(){}
 
 }
 

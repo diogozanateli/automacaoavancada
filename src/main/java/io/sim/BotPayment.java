@@ -1,69 +1,40 @@
 package io.sim;
 
-import java.util.List;
 
 public class BotPayment extends Thread {
-    private Route route;
     private DrivingData drivingData;
-    private Driver driver;
-    private Car car;
-    private Account account;
-    private AlphaBank alphaBank;
-    private FuelStation fuelStation;
-    private Company company;
+    private Account accountPayment;
+    private Account accountReceive;
+    private String client;
 
     // Construtor da classe BotPayment
-    public BotPayment(Route route) {
-        this.route = route;
+    public BotPayment(Account accountpayment, Account accountreceive, String client, DrivingData drivingData) {
+        this.accountPayment = accountpayment;
+        this.accountReceive = accountreceive;
+        this.client = client;
+        this.drivingData = drivingData; // Adiciona um parâmetro para receber a instância de DrivingData
+    }
+
+    // Método para pagamento do motorista
+    public void paymentDriver() {
+        double distance = drivingData.getDistanceKm(drivingData.getX_Position(), drivingData.getY_Position());
+        accountPayment.setBalance(accountPayment.getBalance() - distance * 3.25);
+        accountReceive.setBalance(accountReceive.getBalance() + distance * 3.25);
+    }
+
+    public void paymentFuelStation() {
+        double fuelConsumption = drivingData.getFuelConsumption();
+        double fuelPrice = drivingData.getFuelPrice();
+        accountPayment.setBalance(accountPayment.getBalance() - fuelConsumption * fuelPrice);
+        accountReceive.setBalance(accountReceive.getBalance() + fuelConsumption * fuelPrice);
     }
 
     @Override
     public void run() {
-        // Monitora o progresso dos Cars na rota enquanto não estiverem completos
-        while (!route.isCompleted()) {
-            List<Car> carsOnRoute = route.getCarsOnRoute();
-    
-            // Itera sobre os Cars na rota
-            for (Car car : carsOnRoute) {
-                int kmRodados = car.getKmRodados();
-                double paymentDriver= kmRodados * 3.25;
-                
-                // Realize o pagamento ao Driver
-                double companyBalance = company.getAccountBalance(company.getAccountInfo()[0], company.getAccountInfo()[1]);
-                if (companyBalance >= paymentDriver) {
-                    alphaBank.withdraw(company.getAccountInfo()[0], company.getAccountInfo()[1], paymentDriver);
-                    alphaBank.deposit(driver.getAccount()[0], paymentDriver);
-                    account.recordTransation("Pagamento recebido!", driver.getAccount()[0], paymentDriver);
-                    account.recordTransation("Pagamento efetuado!", company.getAccountInfo()[0], -paymentDriver);
-                } else {
-                    System.out.println("Erro: Saldo insuficiente na conta da Company.");
-                }
-                
-            }
-
-            //Enquanto o carro não estiver cheio, abasteça-o, após abastecer realiza o pagamento a FuelStation
-        while(!fuelStation.fullSupply()) {
-            double paymentFuelStation = car.getFuelTank() * drivingData.getFuelPrice();
-    
-                double driverBalance = driver.getAccountBalance(driver.getAccount()[0], driver.getAccount()[1]);
-                if (driverBalance >= paymentFuelStation) {
-                    alphaBank.withdraw(driver.getAccount()[0], driver.getAccount()[1], paymentFuelStation);
-                    alphaBank.deposit(fuelStation.getAccount()[0], paymentFuelStation);
-                    account.recordTransation("Pagamento recebido!", fuelStation.getAccount()[0], paymentFuelStation);
-                    account.recordTransation("Pagamento efetuado!", driver.getAccount()[0], -paymentFuelStation);
-                } else {
-                    System.out.println("Erro: Saldo insuficiente na conta do Driver.");
-                }
-        }
-
-        
-            try {
-                Thread.sleep(1000); // Aguarda 1 segundo antes de verificar novamente
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+        if (this.client.equals("FuelStation")) {
+            paymentFuelStation();
+        } else if (this.client.equals("Driver")) {
+            paymentDriver();
         }
     }
-    
-    }
-
+}
