@@ -10,6 +10,8 @@ import java.net.Socket;
 
 public class AlphaBank extends Thread{
     private ArrayList<Account> accounts;
+    private Socket socket;
+    private Server server;
     private Account accountCompany;
     private Account accountDriver;
     private Account accountFuelStation;
@@ -20,6 +22,8 @@ public class AlphaBank extends Thread{
     public AlphaBank(DrivingData drivingData) {
         this.accounts = new ArrayList<>();
         this.drivingData = drivingData; // Atribua a instância de DrivingData
+        this.server = new Server(socket);
+        this.server.run();
     }
 
 //Método para retornar o login e a senha da conta

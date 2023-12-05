@@ -12,7 +12,7 @@ import java.net.Socket;
 public class Driver extends Thread {
     private Auto auto;
     private Car car;
-    private Client client;
+    private Client clientDriver;
     private Itinerary itinerary;
     private Account account;
     private DrivingData drivingData;
@@ -24,11 +24,13 @@ public class Driver extends Thread {
     private AlphaBank alphaBank;
     
     //Construtor da classe Driver
-    public Driver(String idDriver, String idCar,FuelStation fuelStation, SumoTraciConnection sumo, AlphaBank alphaBank){
+    public Driver(String idDriver, String idCar,FuelStation fuelStation, SumoTraciConnection sumo, AlphaBank alphaBank) throws IOException{
         this.idDriver = idDriver;
         this.idCar = idCar;
         this.alphaBank = alphaBank;
         this.account = new Account(idDriver, "12345", "12345");
+        this.clientDriver = new Client();
+        this.clientDriver.conectar();
         Car car = new Car(idCar, idDriver, sumo);
         Thread t = new Thread(car);
         Itinerary itinerary = new Itinerary("data/dados2.xml", drivingData.getRouteIDSUMO());
@@ -101,7 +103,7 @@ public class Driver extends Thread {
         JSONObject json = new JSONObject();
         json.put("type", "Route Started!");
         json.put("data", route);
-        client.enviarMensagem(json.toString());
+        clientDriver.enviarMensagem(json.toString());
     }
 
     public void finishedRoute(Route route) throws IOException {
@@ -109,7 +111,7 @@ public class Driver extends Thread {
         JSONObject json = new JSONObject();
         json.put("type", "Route Finished!");
         json.put("data", route);
-        client.enviarMensagem(json.toString());
+        clientDriver.enviarMensagem(json.toString());
     }
 
     //Método para pagar a FuelStation
@@ -135,10 +137,10 @@ public class Driver extends Thread {
                     System.out.println("Conexão estabelecida com " + clientSocket.getInetAddress());
 
                     // Cria um objeto Client para lidar com a conexão
-                    client = new Client();
-                    client.conectar();
+                    clientDriver = new Client();
+                    clientDriver.conectar();
                     // Cria uma nova thread para lidar com a conexão
-                    Thread t = new Thread((Runnable) client);
+                    Thread t = new Thread((Runnable) clientDriver);
                     t.start();
                 }
             }

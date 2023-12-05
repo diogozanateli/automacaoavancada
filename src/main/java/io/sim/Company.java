@@ -7,7 +7,6 @@ import java.sql.DriverManager;
 import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.util.ArrayList;
-import java.util.Queue;
 import org.json.JSONException;
 import org.json.JSONObject;
 import io.github.cdimascio.dotenv.Dotenv;
@@ -112,6 +111,7 @@ public void insertData(String jsonData) {
         float co2_emission = (float) jsonObject.getDouble("co2_emission");
         float longitude = (float) jsonObject.getDouble("longitude");
         float latitude = (float) jsonObject.getDouble("latitude");
+        float best_speed = (float) jsonObject.getDouble("best_speed");
 
         // Connect to the database and insert data
         Connection connection = DriverManager.getConnection(url, user, password);
@@ -127,6 +127,7 @@ public void insertData(String jsonData) {
         preparedStatement.setFloat(8, co2_emission);
         preparedStatement.setFloat(9, longitude);
         preparedStatement.setFloat(10, latitude);
+        preparedStatement.setFloat(11, best_speed);
         preparedStatement.executeUpdate();
     } catch (SQLException | JSONException e) {
         e.printStackTrace();

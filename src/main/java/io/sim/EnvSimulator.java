@@ -42,7 +42,7 @@ public class EnvSimulator extends Thread{
 					try {
 						while (!sumo.isClosed()) {
 							sumo.do_timestep();
-							Thread.sleep(500);////////////////////////////////////////velocidade 			
+							Thread.sleep(500); 			
 						}
 	
 					} catch (Exception e) {

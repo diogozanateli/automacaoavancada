@@ -129,4 +129,10 @@ public class DrivingData {
         return distancia;
     }
 
+	public double getParcialTime(double timeNewPosition) {
+		// Tempo parcial de percurso
+		double parcialTime = timeNewPosition - this.timeStamp;
+		return parcialTime;
+	}
+
 }

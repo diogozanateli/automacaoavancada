@@ -1,6 +1,8 @@
 package io.sim;
 
 import java.io.IOException;
+import java.net.Socket;
+
 import de.tudresden.sumo.cmd.Vehicle;
 import org.json.JSONObject;
 
@@ -25,13 +27,19 @@ public class Car extends Vehicle implements Runnable {
     private String idCar;
     private String idDriver;
     private double fuelTank;
+    private Client clientCar;
+    private Socket socket;
+    private BestSpeed bestSpeed;
 
     // Construtor da classe Car
-    public Car(String idCar, String idDriver, SumoTraciConnection sumo) {
+    public Car(String idCar, String idDriver, SumoTraciConnection sumo) throws IOException {
         this.idCar = idCar;
         this.idDriver = idDriver;
         this.fuelTank = INITIAL_FUEL;
         this.needsRefuel = false;
+        this.clientCar = new Client();
+        this.socket = clientCar.getSocket();
+        clientCar.conectar();
     }
 
     //Método para incrementar o combustível quando o carro for abastecido
@@ -80,8 +88,6 @@ public class Car extends Vehicle implements Runnable {
 
     //Método JSON to string com os dados dessa classe
     public String toJSONString() throws IOException {
-        Client client = new Client();
-        client.conectar();
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("time_stamp", System.currentTimeMillis());
         jsonObject.put("idCar", idCar);
@@ -93,6 +99,7 @@ public class Car extends Vehicle implements Runnable {
         jsonObject.put("co2_emission", drivingData.getCo2Emission());
         jsonObject.put("longitude", drivingData.getX_Position());
         jsonObject.put("latitude", drivingData.getY_Position());
+        jsonObject.put("best_speed", bestSpeed.getFinalVelocidadeKmH());
         return jsonObject.toString();
     }
 
@@ -132,6 +139,7 @@ public class Car extends Vehicle implements Runnable {
 
       @Override
     public void run() {
+    
         while (true) {
             if (fuelTank < MINIMUM_FUEL_FOR_REFUEL) { // Se o combustível for menor que 10 litros
                 needsRefuel = true; // O carro precisa ser abastecido
