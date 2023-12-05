@@ -112,7 +112,7 @@ public class DrivingData {
 		return this.personNumber;
 	}
 
-	public double getAverageFuelConsumption() {
+	public double getAverageFuelConsumption(double bestvelocity) {
 		return this.averageFuelConsumption;
 	}
 
